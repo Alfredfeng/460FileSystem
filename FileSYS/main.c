@@ -24,7 +24,7 @@ int  fd, dev;
 int  nblocks, ninodes, bmap, imap, inode_start;
 char pathname[256], parameter[256];
 
-// #include "util.c"
+//#include "util.c"
 MINODE *iget();
 /*
 #include "alloc_dealloc.c"
@@ -35,12 +35,13 @@ MINODE *iget();
 #include "link.c"
 #include "unlink.c"
 */
-/*
+
 #include "open_close.c"
+
 #include "read.c"
 #include "write.c"
 #include "cp_mv.c"
-*/
+
 
 int init()
 {
@@ -126,20 +127,20 @@ main(int argc, char *argv[ ])
   running->cwd = iget(dev, 2);
   printf("root refCount = %d\n", root->refCount);
 
-  //printf("hit a key to continue : "); getchar();
+  printf("hit a key to continue : "); getchar();
   while(1){
     printf("input command: [ls|cd|pwd|mkdir|creat|rmdir|link|symlink|unlink\n");
-    printf("               |open|close|lseek|read|write|cat|cp|mv|quit] : ");
-    fgets(line, 128, stdin);
+    printf("               |open|close|pfd|lseek|read|write|cat|cp|mv|quit] : ");
+    fgets(line, 128, stdin); //get a line from stdin
     line[strlen(line) - 1] = 0;
 
-    if (line[0]==0)
+    if (line[0]==0) //input is an empty string
       continue;
     pathname[0] = 0;
     parameter[0] = 0;
-    memset(parameter, 0, 256);
+    memset(parameter, 0, 256); //?
  
-    sscanf(line, "%s %s %64c", cmd, pathname, parameter);
+    sscanf(line, "%s %s %64c", cmd, pathname, parameter); //?
     printf("cmd=%s path=%s param=%s\n", cmd, pathname, parameter);
 
     if (strcmp(cmd, "ls")==0)
@@ -172,21 +173,26 @@ main(int argc, char *argv[ ])
       readlink(line);
       printf("symlink name = %s\n", line);
     }
-    /*******************************
+    
     if (strcmp(cmd, "open")==0){
       open_file();
     }
-
+    
     if (strcmp(cmd, "close")==0){
-      close_file();
+      printf("Enter the fd to close>");
+      int i;
+      scanf("%d",&i);
+      //close_file(i);
     }
 
-    if (strcmp(cmd, "lseek")==0){
-      lseek_file();
-    }
     if (strcmp(cmd, "pfd")==0){
       pfd();
     }
+    
+    if (strcmp(cmd, "lseek")==0){
+      lseek_file();
+    }
+   
     if (strcmp(cmd, "read")==0){
       read_file();
     }
@@ -201,12 +207,12 @@ main(int argc, char *argv[ ])
     if (strcmp(cmd, "cp")==0){
       cp_file();
     }
-
-
+    if(strcmp(cmd, "write")== 0){
+      write_file();
+    }
     if (strcmp(cmd, "mv")==0){
       mv_file();
     }
-    ********************************/
 
     if (strcmp(cmd, "quit")==0)
        quit();

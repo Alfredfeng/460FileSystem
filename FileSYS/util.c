@@ -66,7 +66,7 @@ MINODE *iget(int dev, int ino)
     mip = &minode[i];
     if (mip->dev == dev && mip->ino == ino){
        mip->refCount++;
-       //printf("found [%d %d] as minode[%d] in core\n", dev, ino, i);
+       printf("found [%d %d] as minode[%d] in core\n", dev, ino, i);
        return mip;
     }
   }
@@ -74,7 +74,7 @@ MINODE *iget(int dev, int ino)
   for (i=0; i<NMINODE; i++){
     mip = &minode[i];
     if (mip->refCount == 0){
-       //printf("allocating NEW minode[%d] for [%d %d]\n", i, dev, ino);
+       printf("allocating NEW minode[%d] for [%d %d]\n", i, dev, ino);
        mip->refCount = 1;
        mip->dev = dev;
        mip->ino = ino;
@@ -141,7 +141,6 @@ int search(MINODE *mip, char *name)
         if (ip->i_block[i] == 0) 
            return 0;
         printf("search: i=%d  i_block[%d]=%d\n", i, i, ip->i_block[i]);
-	//getchar();
 
         get_block(dev, ip->i_block[i], sbuf);
         dp = (DIR *)sbuf;
@@ -173,7 +172,6 @@ int getino(char *pathname)
   INODE *ip;
   MINODE *mip;
 
-  printf("getino: pathname=%s\n", pathname);
   if (strcmp(pathname, "/")==0)
       return 2;
 
