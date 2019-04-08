@@ -66,7 +66,7 @@ MINODE *iget(int dev, int ino)
     mip = &minode[i];
     if (mip->dev == dev && mip->ino == ino){
        mip->refCount++;
-       printf("found [%d %d] as minode[%d] in core\n", dev, ino, i);
+       //printf("found [%d %d] as minode[%d] in core\n", dev, ino, i);
        return mip;
     }
   }
@@ -74,7 +74,7 @@ MINODE *iget(int dev, int ino)
   for (i=0; i<NMINODE; i++){
     mip = &minode[i];
     if (mip->refCount == 0){
-       printf("allocating NEW minode[%d] for [%d %d]\n", i, dev, ino);
+       //printf("allocating NEW minode[%d] for [%d %d]\n", i, dev, ino);
        mip->refCount = 1;
        mip->dev = dev;
        mip->ino = ino;
@@ -111,7 +111,7 @@ iput(MINODE *mip)
  if (!mip->dirty)       return;
  
  /* write back */
- printf("iput: dev=%d ino=%d\n", mip->dev, mip->ino); 
+ //printf("iput: dev=%d ino=%d\n", mip->dev, mip->ino); 
 
  block =  ((mip->ino - 1) / 8) + inode_start;
  offset =  (mip->ino - 1) % 8;
@@ -133,19 +133,20 @@ int search(MINODE *mip, char *name)
    DIR *dp;
    INODE *ip;
 
-   printf("search for %s in MINODE = [%d, %d]\n", name,mip->dev,mip->ino);
+   //printf("search for %s in MINODE = [%d, %d]\n", name,mip->dev,mip->ino);
    ip = &(mip->INODE);
 
    /**********  search for a file name ***************/
    for (i=0; i<12; i++){ /* search direct blocks only */
         if (ip->i_block[i] == 0) 
            return 0;
-        printf("search: i=%d  i_block[%d]=%d\n", i, i, ip->i_block[i]);
+        //printf("search: i=%d  i_block[%d]=%d\n", i, i, ip->i_block[i]);
+	//getchar();
 
         get_block(dev, ip->i_block[i], sbuf);
         dp = (DIR *)sbuf;
         cp = sbuf;
-        printf("   i_number rec_len name_len    name\n");
+        //printf("   i_number rec_len name_len    name\n");
 
         while (cp < sbuf + BLKSIZE){
 	    c = dp->name[dp->name_len];
@@ -154,7 +155,7 @@ int search(MINODE *mip, char *name)
             printf("%8d%8d%8u        %s\n", 
                     dp->inode, dp->rec_len, dp->name_len, dp->name);
             if (strcmp(dp->name, name)==0){
-                printf("found %s : ino = %d\n", name, dp->inode);
+                //printf("found %s : ino = %d\n", name, dp->inode);
                 return(dp->inode);
             }
             dp->name[dp->name_len] = c;
@@ -172,6 +173,7 @@ int getino(char *pathname)
   INODE *ip;
   MINODE *mip;
 
+  printf("getino: pathname=%s\n", pathname);
   if (strcmp(pathname, "/")==0)
       return 2;
 
@@ -184,8 +186,8 @@ int getino(char *pathname)
   tokenize(buf);
 
   for (i=0; i<n; i++){
-      printf("===========================================\n");
-      printf("getino: i=%d name[%d]=%s\n", i, i, name[i]);
+      //printf("===========================================\n");
+      //printf("getino: i=%d name[%d]=%s\n", i, i, name[i]);
  
       ino = search(mip, name[i]);
 

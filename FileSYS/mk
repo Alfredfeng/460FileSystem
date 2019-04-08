@@ -1,2 +1,2 @@
-cc -m32 main.c OBJ/*.o util.o
-./a.out mydisk
+cc -m32 main.c OBJ/*.o #util.o
+./a.out disk
