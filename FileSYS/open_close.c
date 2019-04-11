@@ -1,5 +1,26 @@
-//implementation of open
+/*********open_close.c file***********/
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <ext2fs/ext2_fs.h>
+#include <string.h>
+#include <libgen.h>
+#include <sys/stat.h>
+
+#include "type.h"
+
 char mode[10];
+extern MINODE minode[NMINODE];
+extern MINODE *root;
+extern PROC   proc[NPROC], *running;
+extern OFT    oft[NFD];
+
+extern char gpath[256];
+extern char *name[64]; // assume at most 64 components in pathnames
+extern int  n;
+extern int  fd, dev;
+extern int  nblocks, ninodes, bmap, imap, inode_start;
+extern char pathname[256], parameter[256];
 
 int open_helper( char *filename, int flags);
 
@@ -25,13 +46,10 @@ int open_file()
 	char filename[256];
 
 	printf("Enter the filename to open>");
-	fgets(filename,256,stdin);
+	gets(filename);
 	//kill the last '\n'
-	for(int i = 0 ; i < 256 ; i ++ )
-	{
-		if(filename[i] = '\n');
-		filename[i] = 0;
-	}
+	filename[strlen(filename)] = 0;//kill the newline
+	printf("filename=%s",filename);
 	printf("Enter the mode to open>");
 	scanf("%d",&i);
 	open_helper(filename,i);
@@ -45,30 +63,46 @@ int open_helper( char *filename, int flags)
 	int mode = flags;
 	OFT *oftp;
 
-	char _pathname[64];
-	strcpy(_pathname,filename);
+
 	MINODE *mip;//minode pointer
 	//1. ask for a pathname and mode to open:
-	printf("pathname=%s\n",filename);
-
-	printf("The mode to open=%d\n",mode);
-	
+	switch(mode)
+	{
+		case 0:
+		printf("open file %s for READ\n", filename); break;
+		case 1:
+		printf("open file %s for WRITE\n", filename); break;
+		case 2:
+		printf("open file %s for RW\n", filename); break;
+		default:
+		printf("ERROR: open file failed\n");
+		exit(1);
+	}
 	//2. get pathname's inumber:
-	if(pathname[0] == '/')
+	if(filename[0] == '/')
 	{
 		dev = root->dev; //root INODE's dev
-		printf("root->dev=%d\n",dev);
+		// printf("root->dev=%d\n",dev);
 	}
 	else
 	{
 		dev = running->cwd->dev;
-		printf("running->cwd->dev=%d\n",dev);
+		// printf("running->cwd->dev=%d\n",dev);
 	}
 
-	ino = getino(_pathname);//seg fault here
-	printf("ino=%d\n",ino);
-	//3. get its Minode pointer
-	mip = iget(dev,ino);
+	ino = getino(filename);
+	//get the ino pointer
+	if(ino == 0 && ( mode == 1 || mode == 2))
+	{
+		printf("Allocating a new minode\n");
+		mip = ialloc(dev);//allocate an inode
+		printf("Allocating complete\n");
+	}
+	else
+	{
+		mip = iget(dev,ino);//if the file exists and the mode is READ
+	}
+	// printf("ino=%d\n",ino);
 	//4. check mip->INODE.i_mode
 	int result = mip->INODE.i_mode & 0XF000;
 	printf("result=%x\n",result);
@@ -81,7 +115,7 @@ int open_helper( char *filename, int flags)
 	}
 
 	//5. allocate a FREE OpenFileTable and fill in values:
-	for(i = 0 ; i < NOFT ; i ++)
+	for(i = 0 ; i < NFD ; i ++)
 	{
 		if(oft[i].refCount == 0)
 		{
@@ -89,7 +123,7 @@ int open_helper( char *filename, int flags)
 			running->fd[i] = &oft[i];//set the address to the fd pointer
 			running->fd[i]->mode = mode;//set mode
 			running->fd[i]->refCount = 1;//set refCount
-			running->fd[i]->minodePtr = mip;//set minnode pointer
+			running->fd[i]->mptr = mip;//set minnode pointer
 			//set oftp pointer
 			oftp = running->fd[i];
 			break;
@@ -116,7 +150,7 @@ int open_helper( char *filename, int flags)
 				return(-1);
 	}
 	//8. 
-	running->fd[i]->minodePtr->dirty = 1;//mark minode as dirty
+	running->fd[i]->mptr->dirty = 1;//mark minode as dirty
 	/*
 	update INODE's time field
          for R: touch atime. 
@@ -132,7 +166,7 @@ int close_file( int fd)
 	MINODE *mip;
 	printf("Closing fd[%d]\n",fd);
 	//1. verify fd is within range
-	if(fd < 0 || fd > NOFT)
+	if(fd < 0 || fd > NFD)
 	{
 		printf("Error: fd is out of range.\n");
 		return -1;
@@ -154,7 +188,7 @@ int close_file( int fd)
 		return 0;
 
 	// last user of this OFT entry ==> dispose of the Minode[]
-     mip = oftp->minodePtr;
+     mip = oftp->mptr;
      iput(mip);
 
      return 0; 
@@ -163,18 +197,44 @@ int close_file( int fd)
 int pfd()
 {
 	//display file discriptors
+	OFT *oftp;
 	int dev; int ino;
+	int offset;
+	int refCount;
+	char str_mode[10];
 
-	printf(" fd    mode    offset    [dev,ino]\n");
+	printf(" fd    mode    offset   refCount    [dev,ino]\n");
 	//how to comppute the current number of opened fd's?
-	for(int i = 0 ; i < 10 ; i ++ )
+	for(int i = 0 ; i < NFD ; i ++)
 	{
-		//dev = running->fd[i]->minodePtr->dev;
-		//ino = running->fd[i]->minodePtr->ino;
-		//setMode(i);
-		//printf("%d    %s    0    [%d,%d]\n",i,mode[i],dev,ino);
-	}
+		oftp = running->fd[i];
+		if(oftp)
+		{
+			switch(oftp->mode)
+			{
+				case 0:
+				strcpy(str_mode,"READ");
+				break;
+				case 1:
+				strcpy(str_mode,"WRITE");
+				break;
+				case 2:
+				strcpy(str_mode,"RW");
+				break;
+				case 3:
+				strcpy(str_mode,"APPEND");
+				break;
+				default:
+				strcpy(str_mode,"ERROR");
+			}
+			offset = oftp->offset;
+			refCount = oftp->refCount;
+			dev = oftp->mptr->dev;
+			ino = oftp->mptr->ino;
 
+			printf("%d    %s    %d    %d   [%d,%d]\n",i,str_mode,offset,refCount,dev,ino);
+		}
+	}
 }
 
 void setMode(int i)

@@ -1,2 +1,5 @@
-cc -m32 main.c OBJ/*.o #util.o
-./a.out disk
+./mkdisk
+
+rm a.out
+cc -m32 main.c util.c map.c open_close.c read.c write.c cp_mv.c OBJ/*.o
+./a.out

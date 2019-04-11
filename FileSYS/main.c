@@ -14,33 +14,24 @@
 MINODE minode[NMINODE];
 MINODE *root;
 PROC   proc[NPROC], *running;
-OFT    oft[NOFT];
+OFT    oft[NFD];
 
 char gpath[256];
 char *name[64]; // assume at most 64 components in pathnames
 int  n;
-
 int  fd, dev;
 int  nblocks, ninodes, bmap, imap, inode_start;
 char pathname[256], parameter[256];
 
+/********************
 #include "util.c"
-MINODE *iget();
-/*
 #include "alloc_dealloc.c"
 #include "cd_ls_pwd.c"
 #include "mkdir.c"
 #include "creat.c"
 #include "rmdir.c"
-#include "link.c"
-#include "unlink.c"
-*/
-#include "map.c"
-#include "open_close.c"
-#include "read.c"
-#include "write.c"
-#include "cp_mv.c"
-
+#include "link_unlink.c"
+*********************/
 int init()
 {
   int i, j;
@@ -65,10 +56,6 @@ int init()
     for (j=0; j<NFD; j++)
       p->fd[j] = 0;
   }
-  for (i=0; i<NOFT; i++){
-    oft[i].refCount = 0;
-    oft[i].mode = -1;
-  }
 }
 
 // load root INODE and set root pointer to it
@@ -79,7 +66,7 @@ int mount_root()
 }
 
 char *disk = "disk";
-main(int argc, char *argv[ ])
+int main(int argc, char *argv[ ])
 {
   int ino;
   char buf[BLKSIZE];
@@ -117,28 +104,26 @@ main(int argc, char *argv[ ])
 
   init();  
   mount_root();
-  printf("root refCount = %d\n", root->refCount);
+  //printf("root refCount = %d\n", root->refCount);
+  printf("mydisk mounted on / OK\n");
 
   printf("creating P0 as running process\n");
   running = &proc[0];
   running->status = READY;
   running->cwd = iget(dev, 2);
-  printf("root refCount = %d\n", root->refCount);
+  //printf("root refCount = %d\n", root->refCount);
 
   //printf("hit a key to continue : "); getchar();
   while(1){
     printf("input command: [ls|cd|pwd|mkdir|creat|rmdir|link|symlink|unlink\n");
     printf("               |open|close|lseek|read|write|cat|cp|mv|quit] : ");
-    fgets(line, 128, stdin);
-    line[strlen(line) - 1] = 0;
-
+    gets(line);
     if (line[0]==0)
       continue;
     pathname[0] = 0;
     parameter[0] = 0;
-    memset(parameter, 0, 256);
- 
-    sscanf(line, "%s %s %64c", cmd, pathname, parameter);
+
+    sscanf(line, "%s %s %s", cmd, pathname, parameter);
     printf("cmd=%s path=%s param=%s\n", cmd, pathname, parameter);
 
     if (strcmp(cmd, "ls")==0)
@@ -171,7 +156,7 @@ main(int argc, char *argv[ ])
       readlink(line);
       printf("symlink name = %s\n", line);
     }
-    
+
     if (strcmp(cmd, "open")==0){
       open_file();
     }
@@ -180,7 +165,7 @@ main(int argc, char *argv[ ])
       printf("Enter the fd to close>");
       int i;
       scanf("%d",&i);
-      //close_file(i);
+      close_file(i);
     }
 
     if (strcmp(cmd, "pfd")==0){
@@ -211,10 +196,9 @@ main(int argc, char *argv[ ])
     if (strcmp(cmd, "mv")==0){
       mv_file();
     }
-    
-
-    if (strcmp(cmd, "quit")==0)
-       quit();
+    if (strcmp(cmd, "quit")==0){
+             quit();
+    }//end if
   }
 }
  

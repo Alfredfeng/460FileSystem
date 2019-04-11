@@ -21,8 +21,6 @@ DIR   *dp;
 #define NFD        64
 #define NPROC      16
 
-#define NOFT       20
-
 typedef struct minode{
   INODE INODE;
   int dev, ino;
@@ -35,7 +33,7 @@ typedef struct minode{
 typedef struct oft{
   int  mode;
   int  refCount;
-  MINODE *minodePtr;
+  MINODE *mptr;
   int  offset;
 }OFT;
 

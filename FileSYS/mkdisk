@@ -1,5 +1,10 @@
 sudo dd if=/dev/zero of=disk bs=1024 count=1440
 sudo mkfs -b 1024 disk 1440
-sudo mount -o loop disk /mnt
-(cd /mnt; sudo rm -r *; ls -l)
-sudo umount /mnt
+
+mkdir A
+
+sudo mount disk A
+(cd A; sudo rmdir lost+found;sudo cp ../main.c .;sudo touch f1 f2 f3 f4)
+sudo umount A
+
+rmdir A
