@@ -23,8 +23,30 @@ extern char pathname[256], parameter[256];
 
 int cp_file()
 {
-	printf("inside cp_file()\n");
-	return 1;
+	char name[25];
+	char name2[25];
+	char cp_buf[1024];
+	int n;
+	int fd = 0;//fd for read
+	int gd = 1;//fd for write
+	printf("Enter the file name to copy from>");
+	gets(name);
+	open_helper(name,fd);
+	printf("Enter the file name to copy to>");
+	gets(name2);
+	open_helper(name2,gd);//open for write
+	pfd();
+
+
+	while( n = myread(fd,cp_buf,1024))
+	{
+		mywrite(gd,cp_buf,n);
+	}
+	printf("copy successful\n");
+	getchar();
+	close_file(fd);
+	close_file(gd);
+	return 0;
 }
 
 int mv_file()

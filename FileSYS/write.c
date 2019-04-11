@@ -26,22 +26,25 @@ int write_file()
 {
 	int fd;
 	OFT *oftp;
-	char buf[1024];//the buf
+	char write_buf[1024];//the buf
 	int nbytes;
-	printf("Enter the fd>");
-	scanf("%d",&fd);
-	if(!running->fd[fd] || running->fd[fd]->mode != 1 || running->fd[fd]->mode != 3)
+	fd = atoi(pathname);
+	oftp = running->fd[fd];
+	printf("fd=%d\n",fd);
+
+	if(!oftp || ( oftp->mode != 1 && oftp->mode != 3) )
 	{
 		printf("Error: the file is not opened for write\n");
 		return -1;
 	}
 	//the file is opened for write
-	oftp = running->fd[fd];
+
 	printf("Enter contents to write>");
-	gets(buf);
-	buf[strlen(buf)] = 0;//kill the last '\n';
-	nbytes = strlen(buf);
-	mywrite(fd,buf,nbytes);
+	gets(write_buf);
+	//buf[strlen(buf)] = 0;//kill the last '\n';
+	printf("write_buf=%s\n",write_buf);
+	nbytes = strlen(write_buf);
+	mywrite(fd,write_buf,nbytes);
 
 	return 1;
 }
@@ -52,49 +55,77 @@ int mywrite(int fd, char buf[ ], int nbytes )
 	//compute lbk
 	OFT *oftp = running->fd[fd];
 	MINODE *mip = oftp->mptr;
-	int num_bytes = nbytes;
+	INODE *ip = &mip->INODE;
+
+	int dev = mip->dev;
 	int startByte;
 	int remain;
-	char wbuf[1024]; //what is this wbuf used for?
-	strcpy(wbuf,buf);
+	int num_bytes = nbytes;
+	int buf12[1024];//block for b12
+	char direct_buf[256];
+	char ibuf[256];//buffer for indirect block
+	char dbuf[256];//buffer for double indirect block
+
+	char wbuf[1024];//wbuf
+
 	char *cp;
-	char *cq = wbuf;//cq points at buf[]
+	char *cq = buf;//cq points at buf[]
+	int lbk;
 	int blk;//physical block number
+	int count = 0;
 
 	//start the outer while
 	while(num_bytes > 0)
 	{
 		//compute logical block number and the startByte in that lbk
 
-		int lbk = oftp->offset/BLKSIZE;
-		int startByte = oftp->offset % BLKSIZE;
+		lbk = oftp->offset/BLKSIZE;
+		startByte = oftp->offset % BLKSIZE;
 
 		//int blk = map(mip,lbk);//compute physical block number blk
 		if(lbk < 12)
 		{
-			if(mip->INODE.i_block[lbk] == 0)
+			if(ip->i_block[lbk] == 0)
 			{
 				//if no data block yet
-				mip->INODE.i_block[lbk] = balloc(mip->dev);//allocate a new data block
+				printf("ip->i_block[%d}==0\n",lbk);
+				ip->i_block[lbk] = balloc(mip->dev);//allocate a new data block
 			}
+
+			blk = ip->i_block[lbk]; //blk should be a disk block now
 		}
-		else if( lbk >= 12 && lbk < 256 + 12)
+		else if( lbk >= 12 && lbk < 256 + 12) //indirect blocks
 		{
-			//indirect blocks
 			if(mip->INODE.i_block[12] == 0)
 			{
-				mip->INODE.i_block[12] = balloc(mip->dev); //allocate a block for it;
-				// how to zero out the blocks on disk??
+				int b12;
+				b12 = mip->INODE.i_block[12] = balloc(mip->dev); //allocate a block for it;
+				if(b12 == 0)
+				{
+					printf("no more data blocks\n");
+					return 0;
+				}
+				get_block(mip->INODE.i_block[12],buf12);//get the content into buf12
+				int *up = (int*)buf12;
+				//zero out the blocks
+				for( int j = 0 ; j < 256 ;j ++)
+				{
+					up[j] = 0;
+				}
+				put_block(mip->INODE.i_block[12],b12);//put the content back
 			}
-			char ibuf[256];
 			//how to get i_block[12]  into an int ibuf[256]??
 		}
 		else
 		{
 			//double indirect blocks
+			lbk -= (12+256);
+			int dblk = dbuf[lbk/256];
+			get_block(dev,dblk,dbuf);
+			blk = dbuf[lbk%256];
 		}
 
-		get_block(mip->dev, blk, wbuf); // write wbuf[] to disk
+		get_block(dev, blk, wbuf); // write wbuf[] to disk
 		cp = wbuf + startByte;
 		remain = BLKSIZE - startByte; //num of bytes remaining in this block
 
@@ -102,10 +133,11 @@ int mywrite(int fd, char buf[ ], int nbytes )
 		{
 			*cp++ = *cq++;
 			num_bytes--; remain--;
+			count ++;
 			oftp->offset++;
 			if(oftp->offset > mip->INODE.i_size)
 				mip->INODE.i_size++;
-			if(nbytes <= 0)
+			if(num_bytes <= 0)
 				break;
 		}
 		put_block(mip->dev, blk, wbuf);
@@ -113,6 +145,6 @@ int mywrite(int fd, char buf[ ], int nbytes )
 	}
 
 	mip->dirty = 1; //mark mip dirty for iput()
-	printf("wrote %d char into file descriptor fd=%d\n",num_bytes, fd);
-	return num_bytes;
+	// printf("wrote %d char into file descriptor fd=%d\n",count, fd);
+	return nbytes;
 }

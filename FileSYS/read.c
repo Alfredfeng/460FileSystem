@@ -48,13 +48,11 @@ int myread(int fd, char *buf, int nbytes)
 	OFT *oftp = running->fd[fd];
 	MINODE *mip = oftp->mptr;
 	INODE *ip = &mip->INODE; //get the inode address
+	offset = oftp->offset;//update offset
 	avil = ip->i_size - offset;//set avil
-	printf("ip->i_size=%d\n",ip->i_size);
 	int dev = mip->dev;//dev number
-
-
 	//2.
-	while( nbytes && avil)
+	while( nbytes > 0 && avil > 0)
 	{
 		//compute logical block number lbk and start byte in that block from offse
 		lbk = oftp->offset /BLKSIZE; //initialize lbk number
@@ -94,7 +92,8 @@ int myread(int fd, char *buf, int nbytes)
 		//??: if one data block is not enough, loop back to outer while for more
 
 	}//end outer while
-	printf("myread: read %d char from file descriptor %d\n", count ,fd);
+	// printf("myread: read %d char from file descriptor %d\n", count ,fd);
+	//printf("readbuf=%s\n",readbuf);
 	return count;
 }
 
@@ -109,10 +108,8 @@ int cat_file()
 	printf("fd=%d\n",fd);
 	while( n = myread(fd, mybuf, 1000))
 	{
-		printf("n=%d\n",n);
 		 mybuf[n] = 0; // as a null-terminated string
 		 printf("%s",mybuf);//not good
-		 getchar();
 		//spit out chars from mybuf[] but handle '\n' properly
 	}
 	//close(fd);//close the file descriptor

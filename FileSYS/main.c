@@ -190,9 +190,6 @@ int main(int argc, char *argv[ ])
     if (strcmp(cmd, "cp")==0){
       cp_file();
     }
-    if(strcmp(cmd, "write")== 0){
-      write_file();
-    }
     if (strcmp(cmd, "mv")==0){
       mv_file();
     }
